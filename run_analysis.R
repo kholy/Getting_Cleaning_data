@@ -1,0 +1,107 @@
+
+library(reshape2)
+runAgain<-function(varName,rerun) {
+  cache<-(!exists(varName)|rerun)
+  cache
+}
+
+mapActivity<-function(n) {x<-activity_labels[n,2]
+                          x
+}
+
+#Reading Data
+data_url<-"https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip"
+data_file<-"Dataset.zip"
+data_dir<-"UCI HAR Dataset"
+test_dir<-"test"
+train_dir<-file.path(data_dir,"train")
+test_dir<-file.path(data_dir,"test")
+if (!file.exists(data_file)) {
+  download.file(data_url, 
+                data_file, "curl", , mode = "wb")
+}
+if (!file.exists(data_dir)) {
+  unzip(data_file)
+  
+}
+
+act_label_file<-file.path(data_dir,"activity_labels.txt")
+features_file<-file.path(data_dir,"features.txt")
+subject_train_file<-file.path(train_dir,"subject_train.txt")
+subject_test_file<-file.path(test_dir,"subject_test.txt")
+x_train_file<-file.path(train_dir,"X_train.txt")
+x_test_file<-file.path(test_dir,"X_test.txt")
+y_train_file<-file.path(train_dir,"y_train.txt")
+y_test_file<-file.path(test_dir,"y_test.txt")
+
+if(runAgain("features",FALSE)) {
+  features<-read.table(features_file)
+  
+}
+
+
+if(runAgain("activity_labels",FALSE)) {
+  activity_labels<-read.table(act_label_file)
+}
+if(runAgain("xtrain",FALSE)) {
+  xtrain<-read.table(x_train_file)
+
+  ytrain<-read.table(y_train_file)
+  subject_train<-read.table(subject_train_file)
+  xtest<-read.table(x_test_file)
+  ytest<-read.table(y_test_file)
+  subject_test<-read.table(subject_test_file)  
+}
+
+# 3 Uses descriptive activity names to name the activities in the data set
+colnames(xtest)<-features[,2]
+colnames(xtrain)<-features[,2]
+
+
+ytrain2<-lapply(ytrain,mapActivity)
+ytest2<-lapply(ytest,mapActivity)
+#colnames(ytrain2)<-"Activity"
+#colnames(ytest2)<-"Activity"
+
+# 1 Merges the training and the test sets to create one data set.
+train_data<-cbind(subject_train,ytrain2,xtrain)
+test_data<-cbind(subject_test,ytest2,xtest)
+full_data <- rbind(train_data, test_data)
+
+# 4 Appropriately labels the data set with descriptive variable names. 
+colnames(full_data)[1]<-"Subject"
+colnames(full_data)[2]<-"Activity"
+
+
+full_data$Subject=as.factor(full_data$Subject)
+full_data$Activity=as.factor(full_data$Activity)
+
+
+summary(full_data)
+# 2 Extracts only the measurements on the mean and standard deviation for each measurement. 
+
+mean_features<-grepl("mean",features[,2])
+std_features<-grepl("std",features[,2])
+tidy_features<-features[mean_features|std_features,]
+colnums<-tidy_features$V1
+full_data2<-full_data[,colnums]
+#colnames(xtest2)<-tidy_features[,2]
+#colnames(xtrain2)<-tidy_features[,2]
+#mean_std_features<-(grepl("std",features[,2]))AND(grepl("mean",features[,2]))
+write.table(full_data2,"mean_std_data.txt", row.name=FALSE)
+
+#full_data3<- melt(full_data, id = c("Activity", "Subjectlibrary(reshape2)
+
+# 5 Creates a second, independent tidy data set with the average of each variable for each activity and each subject. 
+if(runAgain("full_data3",TRUE)) {
+  full_data3 <- melt(full_data2, id = c("Activity", "Subject"))
+}
+
+
+
+tidy_data3<-dcast(full_data3,Activity+Subject~variable,mean)
+
+write.table(tidy_data3,"tidy_data.txt", row.name=FALSE)
+
+
+
